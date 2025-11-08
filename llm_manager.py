@@ -206,7 +206,12 @@ class LLMManager:
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
-                extra_headers=extra_headers
+                extra_headers=extra_headers,
+                thinking={
+                    # "type": "disabled", # 不使用深度思考能力
+                    # "type": "enabled", # 使用深度思考能力
+                    "type": "auto", # 模型自行判断是否使用深度思考能力
+                },
             )
             
             return response.choices[0].message.content

@@ -1,12 +1,11 @@
 # Another AI Assistant for Interview (AAAI)
 
-一个基于AI的智能面试/考试辅助工具，支持屏幕截图分析、剪贴板内容处理和多种大语言模型服务。
+一个基于AI的智能面试/考试辅助工具，支持屏幕截图分析和多种大语言模型服务。
 
 ## 🌟 功能特性
 
 ### 核心功能
 - **智能截图分析**: 连续按Enter键触发屏幕截图，AI自动分析图片内容
-- **剪贴板智能处理**: 连续按Shift键发送剪贴板文本内容进行AI分析
 - **多模型支持**: 支持Ollama、OpenAI、Claude、豆包、千问等多种LLM服务
 - **实时Web界面**: 提供美观的Web界面实时查看分析结果
 - **邮件通知**: 可将分析结果通过邮件发送
@@ -102,12 +101,6 @@ python main.py
 3. 程序自动截图并进行AI分析
 4. 在Web界面查看分析结果
 
-### 剪贴板分析
-1. 复制需要分析的文本内容
-2. 连续按 **3次Shift键**
-3. 程序自动获取剪贴板内容并进行AI分析
-4. 在Web界面查看分析结果
-
 ### Web界面功能
 - **实时显示**: 自动刷新显示最新分析结果
 - **历史记录**: 查看所有历史分析记录
@@ -175,7 +168,6 @@ python main.py
 ```json
 "hotkeys": {
     "screenshot_trigger": "enter",  // 截图触发键
-    "clipboard_trigger": "shift",   // 剪贴板触发键
     "trigger_count": 3,             // 触发次数
     "trigger_timeout": 2.0          // 触发超时时间（秒）
 }
@@ -198,7 +190,6 @@ python main.py
 ├── main.py                 # 主程序入口
 ├── keyboard_listener.py    # 键盘监听模块
 ├── screenshot.py          # 截图管理模块
-├── clipboard_manager.py   # 剪贴板管理模块
 ├── llm_manager.py         # LLM服务管理模块
 ├── email_sender.py        # 邮件发送模块
 ├── web_server.py          # Web服务模块
@@ -221,7 +212,6 @@ python main.py
 - `GET /api/results` - 获取所有分析结果
 - `GET /api/results/latest` - 获取最新分析结果
 - `POST /api/screenshot` - 接收截图数据
-- `POST /api/clipboard` - 接收剪贴板数据
 - `DELETE /api/results/{id}` - 删除指定结果
 - `GET /api/health` - 健康检查
 

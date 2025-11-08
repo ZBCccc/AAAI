@@ -19,7 +19,6 @@
     },
     "hotkeys": {
         "screenshot_trigger": "enter",
-        "clipboard_trigger": "shift",
         "trigger_count": 3,
         "trigger_timeout": 2.0
     },

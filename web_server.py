@@ -14,8 +14,9 @@ from pathlib import Path
 import logging
 
 # 配置Web服务器日志
-web_logger = logging.getLogger('WebServer')
+web_logger = logging.getLogger("WebServer")
 web_logger.setLevel(logging.WARNING)  # 只显示WARNING及以上级别
+
 
 def get_resource_path(relative_path: str) -> str:
     """获取资源文件的绝对路径，兼容开发环境和PyInstaller打包环境"""
@@ -28,17 +29,18 @@ def get_resource_path(relative_path: str) -> str:
         # 开发环境
         base_path = os.path.dirname(os.path.abspath(__file__))
         web_logger.debug(f"开发环境，基础路径: {base_path}")
-    
+
     full_path = os.path.join(base_path, relative_path)
     web_logger.debug(f"完整资源路径: {full_path}")
-    
+
     # 检查路径是否存在
     if os.path.exists(full_path):
         web_logger.debug(f"资源路径存在: {full_path}")
     else:
         web_logger.warning(f"资源路径不存在: {full_path}")
-    
+
     return full_path
+
 
 web_logger.info("初始化FastAPI应用")
 app = FastAPI(title="ExamAssistant Web Display", version="1.0.0")
@@ -49,7 +51,9 @@ web_logger.info("设置数据存储路径")
 DATA_DIR = Path("web_data")
 RESULTS_FILE = DATA_DIR / "results.json"
 IMAGES_DIR = DATA_DIR / "images"
-web_logger.debug(f"数据目录: {DATA_DIR}, 结果文件: {RESULTS_FILE}, 图片目录: {IMAGES_DIR}")
+web_logger.debug(
+    f"数据目录: {DATA_DIR}, 结果文件: {RESULTS_FILE}, 图片目录: {IMAGES_DIR}"
+)
 
 # 确保目录存在
 web_logger.info("创建必要的目录")
@@ -76,10 +80,10 @@ try:
     web_logger.info("挂载静态文件目录")
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
     web_logger.debug("静态文件目录挂载成功")
-    
+
     app.mount("/web_data", StaticFiles(directory=web_data_dir), name="web_data")
     web_logger.debug("Web数据目录挂载成功")
-    
+
     web_logger.info("初始化模板引擎")
     templates = Jinja2Templates(directory=templates_dir)
     web_logger.debug("模板引擎初始化成功")
@@ -87,30 +91,28 @@ except Exception as e:
     web_logger.error(f"静态文件或模板配置失败: {str(e)}", exc_info=True)
     raise
 
+
 class AnalysisResult(BaseModel):
-    type: str  # "screenshot" or "clipboard"
-    content: Optional[str] = None  # 剪贴板文本内容
+    type: str  # "screenshot"
+    content: Optional[str] = None  # 不再使用
     image_path: Optional[str] = None  # 截图文件路径
     analysis: str  # LLM分析结果
     timestamp: str
     id: str
+
 
 class ScreenshotData(BaseModel):
     image_base64: str
     analysis: str
     timestamp: Optional[str] = None
 
-class ClipboardData(BaseModel):
-    text: str
-    analysis: str
-    timestamp: Optional[str] = None
 
 def load_results() -> List[dict]:
     """加载存储的分析结果"""
     web_logger.info(f"尝试加载结果文件: {RESULTS_FILE}")
     if RESULTS_FILE.exists():
         try:
-            with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            with open(RESULTS_FILE, "r", encoding="utf-8") as f:
                 results = json.load(f)
             web_logger.info(f"成功加载 {len(results)} 条结果")
             return results
@@ -124,14 +126,15 @@ def load_results() -> List[dict]:
         web_logger.info("结果文件不存在，返回空列表")
         return []
 
+
 def save_results(results: List[dict]):
     """保存分析结果到文件"""
     web_logger.info(f"尝试保存 {len(results)} 条结果到文件: {RESULTS_FILE}")
     try:
         # 确保目录存在
         RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
+
+        with open(RESULTS_FILE, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
         web_logger.info(f"成功保存结果文件: {RESULTS_FILE}")
     except PermissionError as e:
@@ -144,9 +147,11 @@ def save_results(results: List[dict]):
         web_logger.error(f"保存结果文件失败: {str(e)}", exc_info=True)
         raise
 
+
 def generate_id() -> str:
     """生成唯一ID"""
     return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -155,10 +160,13 @@ async def read_root(request: Request):
     try:
         results = load_results()
         web_logger.info(f"加载了 {len(results)} 条分析结果")
-        return templates.TemplateResponse("index.html", {"request": request, "results": results})
+        return templates.TemplateResponse(
+            "index.html", {"request": request, "results": results}
+        )
     except Exception as e:
         web_logger.error(f"主页加载失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"主页加载失败: {str(e)}")
+
 
 @app.get("/api/results")
 async def get_results():
@@ -171,6 +179,7 @@ async def get_results():
     except Exception as e:
         web_logger.error(f"获取结果失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取结果失败: {str(e)}")
+
 
 @app.get("/api/results/latest")
 async def get_latest_result():
@@ -188,6 +197,7 @@ async def get_latest_result():
         web_logger.error(f"获取最新结果失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取最新结果失败: {str(e)}")
 
+
 @app.post("/api/screenshot")
 async def receive_screenshot(data: ScreenshotData):
     """接收截图数据和分析结果"""
@@ -199,14 +209,14 @@ async def receive_screenshot(data: ScreenshotData):
         timestamp = data.timestamp or datetime.now().isoformat()
         image_filename = f"screenshot_{result_id}.png"
         image_path = IMAGES_DIR / image_filename
-        
+
         # 保存图片
         web_logger.info("开始保存图片")
         image_data = base64.b64decode(data.image_base64)
-        with open(image_path, 'wb') as f:
+        with open(image_path, "wb") as f:
             f.write(image_data)
         web_logger.info(f"图片保存成功: {image_path}")
-        
+
         # 创建结果记录
         web_logger.info("创建分析结果对象")
         result = {
@@ -215,56 +225,22 @@ async def receive_screenshot(data: ScreenshotData):
             "content": None,
             "image_path": f"images/{image_filename}",
             "analysis": data.analysis,
-            "timestamp": timestamp
+            "timestamp": timestamp,
         }
-        
+
         # 保存到结果文件
         web_logger.info("保存分析结果")
         results = load_results()
         results.append(result)
         save_results(results)
         web_logger.info(f"截图数据处理完成，ID: {result_id}")
-        
+
         return JSONResponse(content={"status": "success", "id": result_id})
-    
+
     except Exception as e:
         web_logger.error(f"处理截图数据失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"处理截图数据失败: {str(e)}")
 
-@app.post("/api/clipboard")
-async def receive_clipboard(data: ClipboardData):
-    """接收剪贴板数据和分析结果"""
-    web_logger.info("收到剪贴板数据请求")
-    try:
-        # 生成文件名和ID
-        result_id = generate_id()
-        web_logger.info(f"生成结果ID: {result_id}")
-        timestamp = data.timestamp or datetime.now().isoformat()
-        web_logger.info(f"剪贴板文本长度: {len(data.text) if data.text else 0}")
-        
-        # 创建结果记录
-        web_logger.info("创建剪贴板分析结果对象")
-        result = {
-            "id": result_id,
-            "timestamp": timestamp,
-            "type": "clipboard",
-            "content": data.text,
-            "analysis": data.analysis,
-            "image_path": None
-        }
-        
-        # 保存到结果文件
-        web_logger.info("保存剪贴板分析结果")
-        results = load_results()
-        results.append(result)
-        save_results(results)
-        web_logger.info(f"剪贴板数据处理完成，ID: {result_id}")
-        
-        return JSONResponse(content={"status": "success", "id": result_id})
-    
-    except Exception as e:
-        web_logger.error(f"处理剪贴板数据失败: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"处理剪贴板数据失败: {str(e)}")
 
 @app.delete("/api/results/{result_id}")
 async def delete_result(result_id: str):
@@ -274,10 +250,10 @@ async def delete_result(result_id: str):
         results = load_results()
         original_count = len(results)
         web_logger.info(f"当前共有 {original_count} 条结果")
-        
+
         # 找到并删除结果
         results = [r for r in results if r["id"] != result_id]
-        
+
         if len(results) < original_count:
             save_results(results)
             web_logger.info(f"成功删除结果 {result_id}，剩余 {len(results)} 条结果")
@@ -285,48 +261,54 @@ async def delete_result(result_id: str):
         else:
             web_logger.warning(f"未找到要删除的结果 ID: {result_id}")
             raise HTTPException(status_code=404, detail="未找到指定的结果")
-    
+
     except HTTPException:
         raise
     except Exception as e:
         web_logger.error(f"删除结果失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"删除结果失败: {str(e)}")
 
+
 @app.get("/api/health")
 async def health_check():
     """健康检查接口"""
-    return JSONResponse(content={"status": "healthy", "service": "ExamAssistant Web Display"})
+    return JSONResponse(
+        content={"status": "healthy", "service": "ExamAssistant Web Display"}
+    )
+
 
 def start_server(host: str = "127.0.0.1", port: int = 8000):
     """启动Web服务器"""
     web_logger.debug(f"准备启动Web服务器 - 主机: {host}, 端口: {port}")
-    
+
     try:
         # 检查端口是否可用
         import socket
+
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
-        result = sock.connect_ex((host if host != '0.0.0.0' else 'localhost', port))
+        result = sock.connect_ex((host if host != "0.0.0.0" else "localhost", port))
         sock.close()
-        
+
         if result == 0:
             web_logger.warning(f"端口 {port} 已被占用")
         else:
             web_logger.debug(f"端口 {port} 可用")
-        
+
         web_logger.info(f"🌐 Web服务器启动中... http://{host}:{port}")
         # 禁用uvicorn默认日志配置以避免PyInstaller打包环境下sys.stdout为None的问题
         uvicorn.run(
-            app, 
-            host=host, 
-            port=port, 
+            app,
+            host=host,
+            port=port,
             log_config=None,  # 禁用默认日志配置
-            access_log=False  # 禁用访问日志以避免stdout问题
+            access_log=False,  # 禁用访问日志以避免stdout问题
         )
-        
+
     except Exception as e:
         web_logger.error(f"Web服务器启动失败: {str(e)}", exc_info=True)
         raise
+
 
 # 注释掉独立启动代码，防止通过main.py导入时重复启动
 # if __name__ == "__main__":
