@@ -97,6 +97,10 @@ class ScreenCaptureApp:
         self.logger = logging.getLogger("ScreenCaptureApp")
         self.logger.debug("ScreenCaptureApp实例初始化完成")
 
+        # 防抖：防止重复处理截图
+        self.processing_screenshot = False
+        self.processing_lock = threading.Lock()
+
     def load_config(self, config_path="config.json"):
         """加载配置文件"""
         self.logger.debug(f"开始加载配置文件: {config_path}")
@@ -265,12 +269,18 @@ class ScreenCaptureApp:
 
     def on_screenshot_trigger(self):
         """截图触发回调函数"""
-        self.logger.info("检测到截图触发信号...")
+        # 使用锁防止并发执行
+        if not self.processing_lock.acquire(blocking=False):
+            self.logger.warning("上一次截图处理尚未完成，忽略本次触发")
+            return
 
-        # 截取屏幕
-        screenshot_path = self.screenshot_manager.take_screenshot()
+        try:
+            self.logger.info("检测到截图触发信号...")
 
-        if screenshot_path:
+            # 截取屏幕
+            screenshot_path = self.screenshot_manager.take_screenshot()
+
+            if screenshot_path:
             # 如果LLM可用，先进行AI分析
             llm_analysis = None
             if self.llm_manager.is_enabled():
@@ -325,6 +335,9 @@ class ScreenCaptureApp:
             self.screenshot_manager.cleanup_old_screenshots()
         else:
             self.logger.error("截图失败")
+        finally:
+            # 释放锁
+            self.processing_lock.release()
 
     def start(self):
         """启动应用程序"""

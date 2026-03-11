@@ -23,6 +23,10 @@ class KeyboardListener:
         self.listener = None
         self.running = False
 
+        # 防抖：记录上次触发时间，避免重复触发
+        self.last_trigger_time: float = 0
+        self.debounce_interval: float = 1.0  # 1秒内不允许重复触发
+
     def set_callbacks(self, screenshot_callback: Callable):
         """设置回调函数"""
         self.screenshot_callback = screenshot_callback
@@ -34,9 +38,20 @@ class KeyboardListener:
 
     def _check_trigger(self, timestamps: List[float], callback: Callable):
         """检查是否触发条件"""
+        current_time = time.time()
+
+        # 防抖检查：如果距离上次触发时间太短，忽略本次触发
+        if current_time - self.last_trigger_time < self.debounce_interval:
+            logger.debug(f"触发被防抖机制忽略，距离上次触发仅 {current_time - self.last_trigger_time:.2f} 秒")
+            timestamps.clear()
+            return
+
         if len(timestamps) >= self.trigger_count and callback:
+            # 记录触发时间
+            self.last_trigger_time = current_time
             # 清空时间戳列表，避免重复触发
             timestamps.clear()
+            logger.info("截图触发条件满足，启动回调")
             # 在新线程中执行回调，避免阻塞监听器
             threading.Thread(target=callback, daemon=True).start()
 
