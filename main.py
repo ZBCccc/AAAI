@@ -103,7 +103,6 @@ class ScreenCaptureApp:
         try:
             if not os.path.exists(config_path):
                 self.logger.error(f"配置文件不存在: {config_path}")
-                self.logger.error(f"配置文件不存在: {config_path}")
                 return False
 
             with open(config_path, "r", encoding="utf-8") as f:
@@ -117,7 +116,6 @@ class ScreenCaptureApp:
             return True
         except Exception as e:
             self.logger.error(f"加载配置文件失败: {str(e)}", exc_info=True)
-            self.logger.error(f"加载配置文件失败: {str(e)}")
             return False
 
     def initialize_components(self):
@@ -175,7 +173,6 @@ class ScreenCaptureApp:
                 except Exception as e:
                     self.logger.error("✗ 失败")
                     self.logger.error(f"Web服务启动失败: {str(e)}", exc_info=True)
-                    self.logger.error(f"    Web服务启动失败: {str(e)}")
                     return False
             else:
                 self.logger.info("[6/6] Web服务已禁用，跳过启动")
@@ -227,7 +224,6 @@ class ScreenCaptureApp:
                     result = s.connect_ex(("127.0.0.1", port))
                     if result == 0:
                         self.logger.warning(f"Web服务端口 {port} 已被占用，跳过启动")
-                        self.logger.warning(f"Web服务端口 {port} 已被占用，跳过启动")
                         return
                     else:
                         self.logger.debug(f"端口 {port} 可用")
@@ -256,7 +252,6 @@ class ScreenCaptureApp:
 
         except Exception as e:
             self.logger.error(f"Web服务启动失败: {str(e)}", exc_info=True)
-            self.logger.error(f"Web服务启动失败: {str(e)}")
             raise
 
     def _web_server_wrapper(self, host: str, port: int):
@@ -266,7 +261,6 @@ class ScreenCaptureApp:
             start_server(host, port)
         except Exception as e:
             self.logger.error(f"Web服务器线程执行失败: {str(e)}", exc_info=True)
-            self.logger.error(f"Web服务器启动异常: {str(e)}")
             raise
 
     def on_screenshot_trigger(self):
@@ -450,7 +444,7 @@ def main():
     success = app.start()
 
     if not success:
-        print("程序启动失败")  # 保留这个print，因为此时app可能没有logger
+        sys.stderr.write("程序启动失败\n")
         sys.exit(1)
 
 

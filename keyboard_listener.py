@@ -1,7 +1,10 @@
 import time
+import logging
 from pynput import keyboard
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 import threading
+
+logger = logging.getLogger("KeyboardListener")
 
 
 class KeyboardListener:
@@ -14,7 +17,7 @@ class KeyboardListener:
         self.enter_times: List[float] = []
 
         # 回调函数
-        self.screenshot_callback: Callable = None
+        self.screenshot_callback: Optional[Callable] = None
 
         # 监听器
         self.listener = None
@@ -62,15 +65,15 @@ class KeyboardListener:
         self.running = True
         self.listener = keyboard.Listener(on_press=self._on_key_press)
         self.listener.start()
-        print("键盘监听已启动...")
-        print(f"连续按{self.trigger_count}次Enter键进行截图")
+        logger.info("键盘监听已启动...")
+        logger.info(f"连续按{self.trigger_count}次Enter键进行截图")
 
     def stop_listening(self):
         """停止监听键盘事件"""
         if self.listener and self.running:
             self.listener.stop()
             self.running = False
-            print("键盘监听已停止")
+            logger.info("键盘监听已停止")
 
     def is_running(self) -> bool:
         """检查监听器是否正在运行"""

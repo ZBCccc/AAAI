@@ -1,11 +1,14 @@
 import smtplib
 import os
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from typing import Dict, Optional
 from datetime import datetime
 from llm_manager import LLMManager
+
+logger = logging.getLogger("EmailSender")
 
 
 class EmailSender:
@@ -25,13 +28,13 @@ class EmailSender:
             )
             return server
         except Exception as e:
-            print(f"邮件服务器连接失败: {str(e)}")
+            logger.error(f"邮件服务器连接失败: {str(e)}")
             return None
 
     def send_screenshot_email(self, screenshot_path: str) -> bool:
         """发送截图邮件"""
         if not os.path.exists(screenshot_path):
-            print(f"截图文件不存在: {screenshot_path}")
+            logger.error(f"截图文件不存在: {screenshot_path}")
             return False
 
         try:
@@ -46,15 +49,15 @@ class EmailSender:
             # 使用LLM分析截图（如果启用）
             llm_analysis = ""
             if self.llm_manager.is_enabled():
-                print("正在使用LLM分析截图...")
+                logger.info("正在使用LLM分析截图...")
                 analysis_result = self.llm_manager.process_image(screenshot_path)
                 if analysis_result:
                     llm_analysis = (
                         f"\n\n=== LLM分析结果 ===\n{analysis_result}\n=== 分析结束 ==="
                     )
-                    print("LLM截图分析完成")
+                    logger.info("LLM截图分析完成")
                 else:
-                    print("LLM截图分析失败")
+                    logger.warning("LLM截图分析失败")
 
             # 添加邮件正文
             body = f"""自动截图邮件
@@ -81,13 +84,13 @@ class EmailSender:
             if server:
                 server.send_message(msg)
                 server.quit()
-                print(f"截图邮件发送成功: {screenshot_path}")
+                logger.info(f"截图邮件发送成功: {screenshot_path}")
                 return True
             else:
                 return False
 
         except Exception as e:
-            print(f"发送截图邮件失败: {str(e)}")
+            logger.error(f"发送截图邮件失败: {str(e)}")
             return False
 
     def send_test_email(self) -> bool:
@@ -106,13 +109,13 @@ class EmailSender:
             if server:
                 server.send_message(msg)
                 server.quit()
-                print("测试邮件发送成功")
+                logger.info("测试邮件发送成功")
                 return True
             else:
                 return False
 
         except Exception as e:
-            print(f"发送测试邮件失败: {str(e)}")
+            logger.error(f"发送测试邮件失败: {str(e)}")
             return False
 
     def validate_config(self) -> bool:
@@ -127,13 +130,13 @@ class EmailSender:
 
         for field in required_fields:
             if field not in self.email_config or not self.email_config[field]:
-                print(f"邮件配置缺少必要字段: {field}")
+                logger.error(f"邮件配置缺少必要字段: {field}")
                 return False
 
         # 验证LLM配置（如果启用）
         if not self.llm_manager.validate_config():
-            print("LLM配置验证失败")
+            logger.warning("LLM配置验证失败")
             return False
 
-        print("邮件配置验证通过")
+        logger.info("邮件配置验证通过")
         return True

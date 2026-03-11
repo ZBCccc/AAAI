@@ -1,8 +1,11 @@
 import os
 import time
+import logging
 from datetime import datetime
 from PIL import Image, ImageGrab
 from typing import Dict, Optional
+
+logger = logging.getLogger("ScreenshotManager")
 
 
 class ScreenshotManager:
@@ -18,7 +21,7 @@ class ScreenshotManager:
         """确保截图保存目录存在"""
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
-            print(f"创建截图保存目录: {self.save_path}")
+            logger.info(f"创建截图保存目录: {self.save_path}")
 
     def _generate_filename(self) -> str:
         """生成截图文件名"""
@@ -55,11 +58,11 @@ class ScreenshotManager:
             else:
                 screenshot.save(filepath, target_format)
 
-            print(f"截图已保存: {filepath}")
+            logger.info(f"截图已保存: {filepath}")
             return filepath
 
         except Exception as e:
-            print(f"截图失败: {str(e)}")
+            logger.error(f"截图失败: {str(e)}")
             return None
 
     def get_latest_screenshot(self) -> Optional[str]:
@@ -89,7 +92,7 @@ class ScreenshotManager:
             return os.path.join(self.save_path, latest_file)
 
         except Exception as e:
-            print(f"获取最新截图失败: {str(e)}")
+            logger.error(f"获取最新截图失败: {str(e)}")
             return None
 
     def cleanup_old_screenshots(self, keep_count: int = 10):
@@ -120,7 +123,7 @@ class ScreenshotManager:
             for file in files_to_delete:
                 filepath = os.path.join(self.save_path, file)
                 os.remove(filepath)
-                print(f"删除旧截图: {filepath}")
+                logger.info(f"删除旧截图: {filepath}")
 
         except Exception as e:
-            print(f"清理截图失败: {str(e)}")
+            logger.error(f"清理截图失败: {str(e)}")
