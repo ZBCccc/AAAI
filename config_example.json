@@ -41,11 +41,13 @@
         "openai": {
             "api_key": "",
             "base_url": "https://api.openai.com/v1",
-            "timeout": 60
+            "timeout": 60,
+            "max_tokens": 4096
         },
         "claude": {
             "api_key": "",
-            "timeout": 60
+            "timeout": 60,
+            "max_tokens": 4096
         },
         "doubao": {
             "api_key": "",

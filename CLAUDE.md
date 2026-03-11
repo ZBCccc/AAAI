@@ -60,6 +60,12 @@ LLM config uses two levels: `llm.vision_model` / `llm.text_model` select active 
 
 All timeout values are in seconds. Custom API providers inherit timeout from their provider config.
 
+**Provider-specific max_tokens settings:**
+- `openai.max_tokens` — Maximum tokens in response for OpenAI API (default: 4096)
+- `claude.max_tokens` — Maximum tokens in response for Claude API (default: 4096)
+
+Note: Ollama, Doubao, and Qianwen do not use max_tokens configuration.
+
 ## Conventions
 
 - Python 3.13+, dependencies managed via uv (pyproject.toml) or pip (requirements.txt)

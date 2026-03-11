@@ -76,14 +76,15 @@ class LLMManager:
         """调用OpenAI API"""
         try:
             import openai
-            
+
+            openai_config = self.llm_config.get('openai', {})
             client = openai.OpenAI(
-                api_key=self.llm_config['openai']['api_key'],
-                base_url=self.llm_config['openai'].get('base_url')
+                api_key=openai_config.get('api_key'),
+                base_url=openai_config.get('base_url')
             )
-            
+
             messages = []
-            
+
             if image_path:
                 # 多模态消息
                 image_base64 = self._encode_image_to_base64(image_path)
@@ -107,10 +108,12 @@ class LLMManager:
                 # 纯文本消息
                 messages.append({"role": "user", "content": prompt})
 
+            # 从配置中获取max_tokens，默认为4096
+            max_tokens = openai_config.get('max_tokens', 4096)
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
-                max_tokens=1000
+                max_tokens=max_tokens
             )
 
             return response.choices[0].message.content
@@ -123,13 +126,14 @@ class LLMManager:
         """调用Claude API"""
         try:
             import anthropic
-            
+
+            claude_config = self.llm_config.get('claude', {})
             client = anthropic.Anthropic(
-                api_key=self.llm_config['claude']['api_key']
+                api_key=claude_config.get('api_key')
             )
-            
+
             messages = []
-            
+
             if image_path:
                 # 多模态消息
                 image_base64 = self._encode_image_to_base64(image_path)
@@ -155,9 +159,11 @@ class LLMManager:
                 # 纯文本消息
                 messages.append({"role": "user", "content": prompt})
 
+            # 从配置中获取max_tokens，默认为4096
+            max_tokens = claude_config.get('max_tokens', 4096)
             response = client.messages.create(
                 model=model,
-                max_tokens=1000,
+                max_tokens=max_tokens,
                 messages=messages
             )
 
