@@ -46,7 +46,8 @@ class LLMManager:
     def _call_ollama(self, model: str, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
         """调用Ollama本地模型"""
         try:
-            url = f"{self.llm_config['ollama']['base_url']}/api/generate"
+            ollama_config = self.llm_config.get('ollama', {})
+            url = f"{ollama_config.get('base_url', 'http://localhost:11434')}/api/generate"
             
             payload = {
                 "model": model,
@@ -61,7 +62,7 @@ class LLMManager:
                     payload["images"] = [image_base64]
             
             # 从配置中获取超时时间，默认为60秒
-            timeout = self.llm_config.get('ollama', {}).get('timeout', 60)
+            timeout = ollama_config.get('timeout', 60)
             response = requests.post(url, json=payload, timeout=timeout)
             response.raise_for_status()
             
@@ -80,7 +81,8 @@ class LLMManager:
             openai_config = self.llm_config.get('openai', {})
             client = openai.OpenAI(
                 api_key=openai_config.get('api_key'),
-                base_url=openai_config.get('base_url')
+                base_url=openai_config.get('base_url'),
+                timeout=openai_config.get('timeout', 60)
             )
 
             messages = []
@@ -132,7 +134,8 @@ class LLMManager:
 
             claude_config = self.llm_config.get('claude', {})
             client = anthropic.Anthropic(
-                api_key=claude_config.get('api_key')
+                api_key=claude_config.get('api_key'),
+                timeout=claude_config.get('timeout', 60)
             )
 
             messages = []
@@ -163,12 +166,12 @@ class LLMManager:
                 messages.append({"role": "user", "content": prompt})
 
             # Claude API的max_tokens是必需参数，从配置中获取，默认为8192
-            max_tokens = claude_config.get('max_tokens', 8192)
-            response = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                messages=messages
-            )
+            create_params = {
+                "model": model,
+                "max_tokens": claude_config.get('max_tokens', 8192),
+                "messages": messages
+            }
+            response = client.messages.create(**create_params)
 
             return response.content[0].text  # type: ignore[union-attr]
 
