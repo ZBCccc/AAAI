@@ -1,14 +1,30 @@
-import json
+import logging
 import requests
 import base64
 import os
-from typing import Dict, Optional, Any, List
-from datetime import datetime
+from typing import Dict, Optional
 from volcenginesdkarkruntime import Ark
+
+logger = logging.getLogger("LLMManager")
+
+# 文件扩展名到MIME类型的映射
+IMAGE_MIME_TYPES = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp',
+}
+
+def _get_image_mime_type(image_path: str) -> str:
+    """根据文件扩展名获取MIME类型"""
+    ext = os.path.splitext(image_path)[1].lower()
+    return IMAGE_MIME_TYPES.get(ext, 'image/jpeg')
 
 class LLMManager:
     """LLM管理器，支持多种大语言模型服务"""
-    
+
     def __init__(self, config: Dict):
         self.config = config
         self.llm_config = config.get('llm', {})
@@ -24,7 +40,7 @@ class LLMManager:
             with open(image_path, 'rb') as image_file:
                 return base64.b64encode(image_file.read()).decode('utf-8')
         except Exception as e:
-            print(f"图片编码失败: {str(e)}")
+            logger.error(f"图片编码失败: {str(e)}")
             return None
     
     def _call_ollama(self, model: str, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
@@ -53,7 +69,7 @@ class LLMManager:
             return result.get('response', '')
             
         except Exception as e:
-            print(f"Ollama调用失败: {str(e)}")
+            logger.error(f"Ollama调用失败: {str(e)}")
             return None
     
     def _call_openai(self, model: str, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
@@ -72,6 +88,7 @@ class LLMManager:
                 # 多模态消息
                 image_base64 = self._encode_image_to_base64(image_path)
                 if image_base64:
+                    mime_type = _get_image_mime_type(image_path)
                     messages.append({
                         "role": "user",
                         "content": [
@@ -79,7 +96,7 @@ class LLMManager:
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/jpeg;base64,{image_base64}"
+                                    "url": f"data:{mime_type};base64,{image_base64}"
                                 }
                             }
                         ]
@@ -89,17 +106,17 @@ class LLMManager:
             else:
                 # 纯文本消息
                 messages.append({"role": "user", "content": prompt})
-            
+
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
                 max_tokens=1000
             )
-            
+
             return response.choices[0].message.content
-            
+
         except Exception as e:
-            print(f"OpenAI调用失败: {str(e)}")
+            logger.error(f"OpenAI调用失败: {str(e)}")
             return None
     
     def _call_claude(self, model: str, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
@@ -117,6 +134,7 @@ class LLMManager:
                 # 多模态消息
                 image_base64 = self._encode_image_to_base64(image_path)
                 if image_base64:
+                    mime_type = _get_image_mime_type(image_path)
                     messages.append({
                         "role": "user",
                         "content": [
@@ -125,7 +143,7 @@ class LLMManager:
                                 "type": "image",
                                 "source": {
                                     "type": "base64",
-                                    "media_type": "image/jpeg",
+                                    "media_type": mime_type,
                                     "data": image_base64
                                 }
                             }
@@ -136,17 +154,17 @@ class LLMManager:
             else:
                 # 纯文本消息
                 messages.append({"role": "user", "content": prompt})
-            
+
             response = client.messages.create(
                 model=model,
                 max_tokens=1000,
                 messages=messages
             )
-            
-            return response.content[0].text
-            
+
+            return response.content[0].text  # type: ignore[union-attr]
+
         except Exception as e:
-            print(f"Claude调用失败: {str(e)}")
+            logger.error(f"Claude调用失败: {str(e)}")
             return None
     
     def _call_doubao(self, model: str, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
@@ -157,16 +175,16 @@ class LLMManager:
             base_url = doubao_config.get('base_url', 'https://ark.cn-beijing.volces.com/api/v3')
             
             if not api_key:
-                print("豆包API密钥未配置")
+                logger.error("豆包API密钥未配置")
                 return None
-            
+
             client = Ark(
                 base_url=base_url,
                 api_key=api_key
             )
-            
+
             messages = []
-            
+
             if image_path:
                 # 多模态消息
                 if image_path.startswith(('http://', 'https://')):
@@ -176,11 +194,11 @@ class LLMManager:
                     # 如果是本地文件路径，转换为base64
                     image_base64 = self._encode_image_to_base64(image_path)
                     if image_base64:
-                        image_url = f'data:image/jpeg;base64,{image_base64}'
+                        mime_type = _get_image_mime_type(image_path)
+                        image_url = f'data:{mime_type};base64,{image_base64}'
                     else:
-                        messages.append({'role': 'user', 'content': prompt})
                         image_url = None
-                
+
                 if image_url:
                     messages.append({
                         'role': 'user',
@@ -209,15 +227,15 @@ class LLMManager:
                 extra_headers=extra_headers,
                 thinking={
                     # "type": "disabled", # 不使用深度思考能力
-                    # "type": "enabled", # 使用深度思考能力
-                    "type": "auto", # 模型自行判断是否使用深度思考能力
+                    "type": "enabled", # 使用深度思考能力
+                    # "type": "auto", # 模型自行判断是否使用深度思考能力
                 },
             )
             
-            return response.choices[0].message.content
-            
+            return response.choices[0].message.content  # type: ignore[union-attr]
+
         except Exception as e:
-            print(f"豆包调用失败: {str(e)}")
+            logger.error(f"豆包调用失败: {str(e)}")
             return None
     
     def _call_custom_api(self, provider: str, model: str, prompt: str, image_path: Optional[str] = None) -> Optional[str]:
@@ -228,23 +246,24 @@ class LLMManager:
             api_key = provider_config.get('api_key')
             
             if not url or not api_key:
-                print(f"{provider}配置不完整")
+                logger.error(f"{provider}配置不完整")
                 return None
-            
+
             headers = {
                 'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json'
             }
-            
+
             payload = {
                 'model': model,
                 'messages': []
             }
-            
+
             if image_path:
                 # 多模态消息
                 image_base64 = self._encode_image_to_base64(image_path)
                 if image_base64:
+                    mime_type = _get_image_mime_type(image_path)
                     payload['messages'].append({
                         'role': 'user',
                         'content': [
@@ -252,7 +271,7 @@ class LLMManager:
                             {
                                 'type': 'image_url',
                                 'image_url': {
-                                    'url': f'data:image/jpeg;base64,{image_base64}'
+                                    'url': f'data:{mime_type};base64,{image_base64}'
                                 }
                             }
                         ]
@@ -262,9 +281,9 @@ class LLMManager:
             else:
                 # 纯文本消息
                 payload['messages'].append({'role': 'user', 'content': prompt})
-            
-            # 从配置中获取超时时间，默认为60秒
-            timeout = self.llm_config.get('ollama', {}).get('timeout', 60)
+
+            # 从当前provider配置中获取超时时间，默认60秒
+            timeout = provider_config.get('timeout', 60)
             response = requests.post(url, json=payload, headers=headers, timeout=timeout)
             response.raise_for_status()
             
@@ -272,7 +291,7 @@ class LLMManager:
             return result.get('choices', [{}])[0].get('message', {}).get('content', '')
             
         except Exception as e:
-            print(f"{provider}调用失败: {str(e)}")
+            logger.error(f"{provider}调用失败: {str(e)}")
             return None
     
     def process_text(self, text: str) -> Optional[str]:
@@ -287,9 +306,9 @@ class LLMManager:
             prompt_template = text_config.get('prompt', '请分析以下内容：{content}')
             
             if not provider or not model:
-                print("文字模型配置不完整")
+                logger.error("文字模型配置不完整")
                 return None
-            
+
             prompt = prompt_template.format(content=text)
             
             if provider == 'ollama':
@@ -305,7 +324,7 @@ class LLMManager:
                 return self._call_custom_api(provider, model, prompt)
                 
         except Exception as e:
-            print(f"文本处理失败: {str(e)}")
+            logger.error(f"文本处理失败: {str(e)}")
             return None
     
     def process_image(self, image_path: str) -> Optional[str]:
@@ -320,9 +339,9 @@ class LLMManager:
             prompt_template = vision_config.get('prompt', '请分析这张图片中的内容，特别是如果这是一道题目，请提供详细的解答。')
             
             if not provider or not model:
-                print("多模态模型配置不完整")
+                logger.error("多模态模型配置不完整")
                 return None
-            
+
             if provider == 'ollama':
                 return self._call_ollama(model, prompt_template, image_path)
             elif provider == 'openai':
@@ -336,7 +355,7 @@ class LLMManager:
                 return self._call_custom_api(provider, model, prompt_template, image_path)
                 
         except Exception as e:
-            print(f"图片处理失败: {str(e)}")
+            logger.error(f"图片处理失败: {str(e)}")
             return None
     
     def check_availability(self) -> bool:
@@ -368,7 +387,7 @@ class LLMManager:
             return True
             
         except Exception as e:
-            print(f"LLM可用性检查失败: {str(e)}")
+            logger.error(f"LLM可用性检查失败: {str(e)}")
             return False
     
     def _check_provider_availability(self, provider: str) -> bool:
@@ -386,7 +405,7 @@ class LLMManager:
                 # 自定义API提供商
                 return self._check_custom_api_availability(provider)
         except Exception as e:
-            print(f"{provider}可用性检查失败: {str(e)}")
+            logger.error(f"{provider}可用性检查失败: {str(e)}")
             return False
     
     def _check_ollama_availability(self) -> bool:
@@ -400,7 +419,7 @@ class LLMManager:
             response = requests.get(f"{base_url}/api/tags", timeout=health_timeout)
             return response.status_code == 200
         except Exception as e:
-            print(f"Ollama连接失败: {str(e)}")
+            logger.error(f"Ollama连接失败: {str(e)}")
             return False
     
     def _check_openai_availability(self) -> bool:
@@ -408,11 +427,11 @@ class LLMManager:
         try:
             api_key = self.llm_config.get('openai', {}).get('api_key')
             if not api_key or api_key == 'your_openai_api_key':
-                print("OpenAI API密钥未配置")
+                logger.error("OpenAI API密钥未配置")
                 return False
             return True
         except Exception as e:
-            print(f"OpenAI配置检查失败: {str(e)}")
+            logger.error(f"OpenAI配置检查失败: {str(e)}")
             return False
     
     def _check_claude_availability(self) -> bool:
@@ -420,11 +439,11 @@ class LLMManager:
         try:
             api_key = self.llm_config.get('claude', {}).get('api_key')
             if not api_key or api_key == 'your_claude_api_key':
-                print("Claude API密钥未配置")
+                logger.error("Claude API密钥未配置")
                 return False
             return True
         except Exception as e:
-            print(f"Claude配置检查失败: {str(e)}")
+            logger.error(f"Claude配置检查失败: {str(e)}")
             return False
     
     def _check_doubao_availability(self) -> bool:
@@ -434,12 +453,12 @@ class LLMManager:
             api_key = doubao_config.get('api_key') or os.environ.get('ARK_API_KEY')
             
             if not api_key:
-                print("豆包API密钥未配置")
+                logger.error("豆包API密钥未配置")
                 return False
-            
+
             return True
         except Exception as e:
-            print(f"豆包配置检查失败: {str(e)}")
+            logger.error(f"豆包配置检查失败: {str(e)}")
             return False
     
     def _check_custom_api_availability(self, provider: str) -> bool:
@@ -450,35 +469,35 @@ class LLMManager:
             api_url = provider_config.get('api_url')
             
             if not api_key or not api_url:
-                print(f"{provider}配置不完整")
+                logger.error(f"{provider}配置不完整")
                 return False
-            
+
             return True
         except Exception as e:
-            print(f"{provider}配置检查失败: {str(e)}")
+            logger.error(f"{provider}配置检查失败: {str(e)}")
             return False
 
     def validate_config(self) -> bool:
         """验证LLM配置"""
         if not self.llm_config:
-            print("LLM配置为空")
+            logger.error("LLM配置为空")
             return False
-        
+
         if not self.llm_config.get('enabled', False):
-            print("LLM功能未启用")
+            logger.info("LLM功能未启用")
             return True  # 未启用不算错误
-        
+
         # 检查文字模型配置
         text_config = self.llm_config.get('text_model', {})
         if not text_config.get('provider') or not text_config.get('model'):
-            print("文字模型配置不完整")
+            logger.warning("文字模型配置不完整")
             return False
-        
+
         # 检查多模态模型配置
         vision_config = self.llm_config.get('vision_model', {})
         if not vision_config.get('provider') or not vision_config.get('model'):
-            print("多模态模型配置不完整")
+            logger.warning("多模态模型配置不完整")
             return False
-        
-        print("LLM配置验证通过")
+
+        logger.info("LLM配置验证通过")
         return True

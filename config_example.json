@@ -40,18 +40,22 @@
         },
         "openai": {
             "api_key": "",
-            "base_url": "https://api.openai.com/v1"
+            "base_url": "https://api.openai.com/v1",
+            "timeout": 60
         },
         "claude": {
-            "api_key": ""
+            "api_key": "",
+            "timeout": 60
         },
         "doubao": {
             "api_key": "",
-            "api_url": "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+            "api_url": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+            "timeout": 60
         },
         "qianwen": {
             "api_key": "sk-xxx",
-            "api_url": "https://api.suanli.cn/v1"
+            "api_url": "https://api.suanli.cn/v1",
+            "timeout": 60
         }
     }
 }
