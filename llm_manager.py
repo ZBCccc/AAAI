@@ -108,13 +108,16 @@ class LLMManager:
                 # 纯文本消息
                 messages.append({"role": "user", "content": prompt})
 
-            # 从配置中获取max_tokens，默认为4096
-            max_tokens = openai_config.get('max_tokens', 4096)
-            response = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                max_tokens=max_tokens
-            )
+            # OpenAI API的max_tokens是可选的，不指定时会自动使用合理的默认值
+            # 如果配置中指定了max_tokens，则使用配置的值
+            create_params = {
+                "model": model,
+                "messages": messages
+            }
+            if 'max_tokens' in openai_config:
+                create_params['max_tokens'] = openai_config['max_tokens']
+
+            response = client.chat.completions.create(**create_params)
 
             return response.choices[0].message.content
 
@@ -159,8 +162,8 @@ class LLMManager:
                 # 纯文本消息
                 messages.append({"role": "user", "content": prompt})
 
-            # 从配置中获取max_tokens，默认为4096
-            max_tokens = claude_config.get('max_tokens', 4096)
+            # Claude API的max_tokens是必需参数，从配置中获取，默认为8192
+            max_tokens = claude_config.get('max_tokens', 8192)
             response = client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
